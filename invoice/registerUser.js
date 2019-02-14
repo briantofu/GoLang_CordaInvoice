@@ -1,12 +1,5 @@
 'use strict';
-/*
-* Copyright IBM Corp All Rights Reserved
-*
-* SPDX-License-Identifier: Apache-2.0
-*/
-/*
- * Register and Enroll a user
- */
+
 
 var Fabric_Client = require('fabric-client');
 var Fabric_CA_Client = require('fabric-ca-client');
@@ -58,9 +51,7 @@ Fabric_Client.newDefaultKeyValueStore({ path: store_path
         throw new Error('Failed to get admin.... run enrollAdmin.js');
     }
 
-    // at this point we should have the admin user
-    // first need to register the user with the CA server
-    //var attributes = {username:"Amol:ecert",org:"ICICI:ecert"};
+    // the attributes on the users are based on 3 users, the supplier, oem and bank which will be used on invoice
     let attributes = [
         //Supplier
         {name:"username", value:"IBM",ecert:true },
@@ -71,7 +62,7 @@ Fabric_Client.newDefaultKeyValueStore({ path: store_path
         //BANK
         {name:"username", value:"UBP",ecert:true }
 ];
-
+    //the promise will need to exectue the fabric_ca_clients or the certificate authority inside. thus the creation of the departments.
     return fabric_ca_client
     .register({enrollmentID: 'IBM', affiliation: 'org1.department1',role: 'supplier', attrs: attributes}, admin_user)
     .then((ibm_secret)=>{
@@ -88,11 +79,13 @@ Fabric_Client.newDefaultKeyValueStore({ path: store_path
 
 }).then((ubp_secret) => {
     secret_ubp = ubp_secret
+    //success commands
     console.log('Successfully registered IBM - secret:'+ secret_ibm);
     console.log('Successfully registered Lotus - secret:'+ secret_lotus);
     console.log('Successfully registered UBP - secret:'+ secret_ubp);
 
     return fabric_ca_client
+    //gets the secret by enrollment id
     .enroll({enrollmentID: 'IBM', enrollmentSecret: secret_ibm})
     .then(()=>{
         return fabric_ca_client

@@ -1,59 +1,31 @@
-/*
- * Licensed to the Apache Software Foundation (ASF) under one
- * or more contributor license agreements.  See the NOTICE file
- * distributed with this work for additional information
- * regarding copyright ownership.  The ASF licenses this file
- * to you under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance
- * with the License.  You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- * KIND, either express or implied.  See the License for the
- * specific language governing permissions and limitations
- * under the License.
- */
-
-/*
- * The sample smart contract for documentation topic:
- * Writing Your First Blockchain Application
- */
-
 package main
 
-/* Imports
- * 4 utility libraries for formatting, handling bytes, reading and writing JSON, and string manipulation
- * 2 specific Hyperledger Fabric specific libraries for Smart Contracts
- */
 import (
 	"bytes"
 	"encoding/json"
 	"fmt"
 	"strconv"
 	"time" //timestamp
+
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	sc "github.com/hyperledger/fabric/protos/peer"
 )
 
-// Define the Smart Contract structure
 type SmartContract struct {
 }
 
 // Define the invoice structure, with 10 properties.  Structure tags are used by encoding/json library
 type Invoice struct {
-	InvoiceNumber   string `json:"invoicenum"`
-	BilledTo        string `json:"billedto"`
-	InvoiceDate     string `json:"invoicedate"`
-	InvoiceAmount   string `json:"invoiceamount"`
-	ItemDescription string `json:"itemdescription"`
-	GR              string `json:"gr"`
-	IsPaid          string `json:"ispaid"`
-	PaidAmount      string `json:"paidamount"`
-	Repaid          string `json:"repaid"`
-	RepaymentAmount string `json:"repaymentamount"`
+	InvoiceNumber   string  `json:"invoicenum"`
+	BilledTo        string  `json:"billedto"`
+	InvoiceDate     string  `json:"invoicedate"`
+	InvoiceAmount   float64 `json:"invoiceamount"`
+	ItemDescription string  `json:"itemdescription"`
+	GR              bool    `json:"gr"`
+	IsPaid          bool    `json:"ispaid"`
+	PaidAmount      float64 `json:"paidamount"`
+	Repaid          bool    `json:"repaid"`
+	RepaymentAmount float64 `json:"repaymentamount"`
 }
 
 /*
@@ -64,21 +36,14 @@ func (s *SmartContract) Init(APIstub shim.ChaincodeStubInterface) sc.Response {
 	return shim.Success(nil)
 }
 
-/*
- * The Invoke method is called as a result of an application request to run the Smart Contract "invoice"
- * The calling application program has also specified the particular smart contract function to be called, with arguments
- */
 func (s *SmartContract) Invoke(APIstub shim.ChaincodeStubInterface) sc.Response {
-
-	// Retrieve the requested Smart Contract function and arguments
 	function, args := APIstub.GetFunctionAndParameters()
-	// Route to the appropriate handler function to interact with the ledger appropriately
 	if function == "initLedger" {
 		return s.initLedger(APIstub)
 	} else if function == "raiseInvoice" {
 		return s.raiseInvoice(APIstub, args)
 	} else if function == "displayAllInvoices" {
-		return s.displayAllInvoices(APIstub)
+		return s.displayAllInvoices(APIstub) //display all invoices without any arguments
 	} else if function == "isGoodsReceived" {
 		return s.isGoodsReceived(APIstub, args)
 	} else if function == "isPaidToSupplier" {
@@ -96,8 +61,6 @@ func (s *SmartContract) Invoke(APIstub shim.ChaincodeStubInterface) sc.Response 
 	return shim.Error("Invalid Smart Contract function name.")
 }
 
-// Default
-// DONE
 func (s *SmartContract) initLedger(APIstub shim.ChaincodeStubInterface) sc.Response {
 
 	//the first data that will be shown on the localhost
@@ -106,13 +69,13 @@ func (s *SmartContract) initLedger(APIstub shim.ChaincodeStubInterface) sc.Respo
 			InvoiceNumber:   "1001",
 			BilledTo:        "ASUS",
 			InvoiceDate:     "07FEB2019",
-			InvoiceAmount:   "10000",
+			InvoiceAmount:   10000.00,
 			ItemDescription: "LAPTOP",
-			GR:              "N",
-			IsPaid:          "N",
-			PaidAmount:      "0",
-			Repaid:          "N",
-			RepaymentAmount: "0"},
+			GR:              false,
+			IsPaid:          false,
+			PaidAmount:      0.00,
+			Repaid:          false,
+			RepaymentAmount: 0.00},
 	}
 
 	i := 0
@@ -127,15 +90,15 @@ func (s *SmartContract) initLedger(APIstub shim.ChaincodeStubInterface) sc.Respo
 	return shim.Success(nil)
 }
 
-// John Carlo Cuya
-// DONE
 func (s *SmartContract) raiseInvoice(APIstub shim.ChaincodeStubInterface, args []string) sc.Response {
 
-	if len(args) != 11 { // change size
-		return shim.Error("Incorrect number of arguments. Expecting 11")
+	if len(args) != 6 { // change size
+		return shim.Error("Incorrect number of arguments. Expecting 6")
 	}
 
-	var invoice = Invoice{InvoiceNumber: args[1], BilledTo: args[2], InvoiceDate: args[3], InvoiceAmount: args[4], ItemDescription: args[5], GR: args[6], IsPaid: args[7], PaidAmount: args[8], Repaid: args[9], RepaymentAmount: args[10]}
+	invAmount, _ := strconv.ParseFloat(args[4], 64)
+	//parameters that will execute data on the insomia api
+	var invoice = Invoice{InvoiceNumber: args[1], BilledTo: args[2], InvoiceDate: args[3], InvoiceAmount: invAmount, ItemDescription: args[5], GR: false, IsPaid: false, PaidAmount: 0.00, Repaid: false, RepaymentAmount: 0.00}
 	//change parameters
 
 	invoiceAsBytes, _ := json.Marshal(invoice)
@@ -144,8 +107,6 @@ func (s *SmartContract) raiseInvoice(APIstub shim.ChaincodeStubInterface, args [
 	return shim.Success(nil)
 }
 
-// Default
-// DONE
 func (s *SmartContract) raiseInvoiceWithJsonInput(APIstub shim.ChaincodeStubInterface, args []string) sc.Response {
 
 	if len(args) != 11 {
@@ -163,8 +124,7 @@ func (s *SmartContract) raiseInvoiceWithJsonInput(APIstub shim.ChaincodeStubInte
 	return shim.Success(nil)
 }
 
-// Joshua Caramancion
-// DONE
+// display the all invoices through json format
 func (s *SmartContract) displayAllInvoices(APIstub shim.ChaincodeStubInterface) sc.Response {
 
 	startKey := "INVOICE0"
@@ -208,8 +168,6 @@ func (s *SmartContract) displayAllInvoices(APIstub shim.ChaincodeStubInterface) 
 	return shim.Success(buffer.Bytes())
 }
 
-// Ron Vincent Exconde
-// DONE
 func (s *SmartContract) isGoodsReceived(APIstub shim.ChaincodeStubInterface, args []string) sc.Response {
 
 	if len(args) != 2 {
@@ -220,7 +178,7 @@ func (s *SmartContract) isGoodsReceived(APIstub shim.ChaincodeStubInterface, arg
 	invoice := Invoice{}
 
 	json.Unmarshal(invoiceAsBytes, &invoice)
-	invoice.GR = args[1]
+	invoice.GR = true
 
 	invoiceAsBytes, _ = json.Marshal(invoice)
 	APIstub.PutState(args[0], invoiceAsBytes)
@@ -228,7 +186,6 @@ func (s *SmartContract) isGoodsReceived(APIstub shim.ChaincodeStubInterface, arg
 	return shim.Success(nil)
 }
 
-// Jenrielle Gaon
 func (s *SmartContract) isPaidToSupplier(APIstub shim.ChaincodeStubInterface, args []string) sc.Response {
 
 	if len(args) != 2 {
@@ -238,16 +195,22 @@ func (s *SmartContract) isPaidToSupplier(APIstub shim.ChaincodeStubInterface, ar
 	invoiceAsBytes, _ := APIstub.GetState(args[0])
 	invoice := Invoice{}
 
-	json.Unmarshal(invoiceAsBytes, &invoice)
-	invoice.IsPaid = args[1]
+	pAmount, _ := strconv.ParseFloat(args[1], 64)
 
+	json.Unmarshal(invoiceAsBytes, &invoice)
+	// if the paid amount is less than the invoice amount
+	if pAmount < invoice.InvoiceAmount {
+		invoice.PaidAmount = pAmount
+		invoice.IsPaid = true
+	} else {
+		return shim.Error("Paid Amount must be always less than invoice amount")
+	}
 	invoiceAsBytes, _ = json.Marshal(invoice)
 	APIstub.PutState(args[0], invoiceAsBytes)
 
 	return shim.Success(nil)
 }
 
-// Jenrielle Gaon
 func (s *SmartContract) isPaidToBank(APIstub shim.ChaincodeStubInterface, args []string) sc.Response {
 
 	if len(args) != 2 {
@@ -257,8 +220,16 @@ func (s *SmartContract) isPaidToBank(APIstub shim.ChaincodeStubInterface, args [
 	invoiceAsBytes, _ := APIstub.GetState(args[0])
 	invoice := Invoice{}
 
+	rAmount, _ := strconv.ParseFloat(args[1], 64)
+
 	json.Unmarshal(invoiceAsBytes, &invoice)
-	invoice.Repaid = args[1]
+	// if the invoice amount is less than the repayment amount
+	if invoice.InvoiceAmount < rAmount {
+		invoice.RepaymentAmount = rAmount
+		invoice.Repaid = true
+	} else {
+		return shim.Error("Repayment Amount must be always greater than invoice amount")
+	}
 
 	invoiceAsBytes, _ = json.Marshal(invoice)
 	APIstub.PutState(args[0], invoiceAsBytes)
@@ -280,7 +251,7 @@ func (s *SmartContract) getAuditHistoryForInvoice(APIstub shim.ChaincodeStubInte
 	}
 	defer resultsIterator.Close()
 
-	// buffer is a JSON array containing historic values for the car
+	//Json arrays for Invoice
 	var buffer bytes.Buffer
 	buffer.WriteString("[")
 
@@ -294,7 +265,7 @@ func (s *SmartContract) getAuditHistoryForInvoice(APIstub shim.ChaincodeStubInte
 		if bArrayMemberAlreadyWritten == true {
 			buffer.WriteString(",")
 		}
-		buffer.WriteString("{\"TxId\":")
+		buffer.WriteString("{\"TxId\":") // The hash of the transaction ID
 		buffer.WriteString("\"")
 		buffer.WriteString(response.TxId)
 		buffer.WriteString("\"")
@@ -302,7 +273,7 @@ func (s *SmartContract) getAuditHistoryForInvoice(APIstub shim.ChaincodeStubInte
 		buffer.WriteString(", \"Value\":")
 		buffer.WriteString(string(response.Value))
 
-		buffer.WriteString(", \"Timestamp\":")
+		buffer.WriteString(", \"Timestamp\":") // Timestamp that transacts
 		buffer.WriteString("\"")
 		buffer.WriteString(time.Unix(response.Timestamp.Seconds, int64(response.Timestamp.Nanos)).String())
 		buffer.WriteString("\"")
@@ -314,7 +285,6 @@ func (s *SmartContract) getAuditHistoryForInvoice(APIstub shim.ChaincodeStubInte
 	return shim.Success(buffer.Bytes())
 }
 
-// Dont touch this yet
 func (s *SmartContract) getUser(APIstub shim.ChaincodeStubInterface, args []string) sc.Response {
 
 	// attr := args[0]
@@ -341,11 +311,8 @@ func (s *SmartContract) getUser(APIstub shim.ChaincodeStubInterface, args []stri
 	return shim.Success(nil)
 }
 
-
-// The main function is only relevant in unit test mode. Only included here for completeness.
 func main() {
 
-	// Create a new Smart Contract
 	err := shim.Start(new(SmartContract))
 	if err != nil {
 		fmt.Printf("Error creating new Smart Contract: %s", err)

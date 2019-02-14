@@ -3,7 +3,7 @@ var path = require('path');
 var util = require('util');
 var os = require('os');
 
-//
+
 var fabric_client = new Fabric_Client();
 
 // setup the fabric network
@@ -13,7 +13,7 @@ channel.addPeer(peer);
 var order = fabric_client.newOrderer('grpc://localhost:7050')
 channel.addOrderer(order);
 
-//
+
 var store_path = path.join(__dirname, 'hfc-key-store');
 console.log('Store path:'+store_path);
 var tx_id = null;
@@ -39,8 +39,6 @@ Fabric_Client.newDefaultKeyValueStore({ path: store_path
 fabric_client.setStateStore(state_store);
 var crypto_suite = Fabric_Client.newCryptoSuite();
 
-// use the same location for the state store (where the users' certificate are kept)
-// and the crypto store (where the users' keys are kept)
 var crypto_store = Fabric_Client.newCryptoKeyStore({path: store_path});
 crypto_suite.setCryptoKeyStore(crypto_store);
 fabric_client.setCryptoSuite(crypto_suite);
@@ -82,7 +80,7 @@ var gr = req.body.gr;
 var ispaid = req.body.ispaid;
 var paidamount = req.body.paidamount;
 var repaid = req.body.repaid;
-var repaymentamount = req.body.paidamount;
+var repaymentamount = req.body.repaymentamount;
 
 raiseinvoice.push(invoiceid);
 if (req.method == "POST")
@@ -105,11 +103,6 @@ if (req.method == "POST")
     raiseinvoice.push(invoicedate);
     raiseinvoice.push(invoiceamount); 
     raiseinvoice.push(itemdescription);
-    raiseinvoice.push(gr); 
-    raiseinvoice.push(ispaid);
-    raiseinvoice.push(paidamount); 
-    raiseinvoice.push(repaid);
-    raiseinvoice.push(repaymentamount); 
   }
 
 }
@@ -127,7 +120,7 @@ else if(req.method == "PUT")
         raiseinvoice.push(gr);
     }
   }
-    else if(ispaid)
+    else if(paidamount)
     {
       if (username != "UBP"){
         res.json(username + " is not allowed to do this transaction.");
@@ -135,10 +128,10 @@ else if(req.method == "PUT")
        }
        else {
         request.fcn= 'isPaidToSupplier',
-        raiseinvoice.push(ispaid);
+        raiseinvoice.push(paidamount);
     }
   }
-    else if(repaid)
+    else if(repaymentamount)
     {
       var username = req.body.username;
 
@@ -151,7 +144,7 @@ else if(req.method == "PUT")
       else 
       {
         request.fcn= 'isPaidToBank',
-        raiseinvoice.push(repaid);
+        raiseinvoice.push(repaymentamount);
     }
 }
 }
@@ -191,22 +184,14 @@ proposalResponses: proposalResponses,
 proposal: proposal
 };
 
-// set the transaction listener and set a timeout of 30 sec
-// if the transaction did not get committed within the timeout period,
-// report a TIMEOUT status
 var transaction_id_string = tx_id.getTransactionID(); //Get the transaction ID string to be used by the event processing
 var promises = [];
 
 var sendPromise = channel.sendTransaction(request);
 promises.push(sendPromise); //we want the send transaction first, so that we know where to check status
 
-// get an eventhub once the fabric client has a user assigned. The user
-// is required bacause the event registration must be signed
 let event_hub = channel.newChannelEventHub(peer);
 
-// using resolve the promise so that result status may be processed
-// under the then clause rather than having the catch clause process
-// the status
 let txPromise = new Promise((resolve, reject) => {
 let handle = setTimeout(() => {
 event_hub.unregisterTxEvent(transaction_id_string);
@@ -239,7 +224,9 @@ event_hub.connect();
 promises.push(txPromise);
 
 return Promise.all(promises);
-} else {
+} else { // user input error
+res.json({"status": "604"});
+//res.json({"Incorrect user input"});
 console.error('Failed to send Proposal or receive valid response. Response null or status is not 200. exiting...');
 throw new Error('Failed to send Proposal or receive valid response. Response null or status is not 200. exiting...');
 }
@@ -340,25 +327,25 @@ console.log("Response is ", query_responses[0].toString());
 console.log("No payloads were returned from query");
 }
 }).catch((err) => {
+  res.json("Username is not registered successfully");
+  
 console.error('Failed to query successfully :: ' + err);
 });
 })
-
+//testing the user1 which it will bot be needed
 app.get('/block', function (req, res) {
 
-  // create the key value store as defined in the fabric-client/config/default.json 'key-value-store' setting
+
   Fabric_Client.newDefaultKeyValueStore({ path: store_path
   }).then((state_store) => {
-  // assign the store to the fabric client
+
   fabric_client.setStateStore(state_store);
   var crypto_suite = Fabric_Client.newCryptoSuite();
-  // use the same location for the state store (where the users' certificate are kept)
-  // and the crypto store (where the users' keys are kept)
+
   var crypto_store = Fabric_Client.newCryptoKeyStore({path: store_path});
   crypto_suite.setCryptoKeyStore(crypto_store);
   fabric_client.setCryptoSuite(crypto_suite);
-  
-  // get the enrolled user from persistence, this user will sign all requests
+
   return fabric_client.getUserContext('user1', true);
   }).then((user_from_store) => {
   if (user_from_store && user_from_store.isEnrolled()) {
